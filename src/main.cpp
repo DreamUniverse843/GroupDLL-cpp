@@ -16,7 +16,7 @@ const PluginConfig CPPPlugin::config{
         "2022-10-18"        // 可选：日期
 };
 
-
+int isAbnormalStopChecked = 0;
 //是否启用监听踢出（全局变量）
 int isKickIgnoreEnable = 0;
 //常量 - 管理员数组，如发出者账号为管理员则执行对应命令
@@ -83,6 +83,23 @@ public:
       Logger::logger.info("[Info]插件正在启动。如群内无法接收到机器人消息，则可能处于风控状态。");
       Logger::logger.info("[System]初始化黑名单数据文件中");
       iniInitialize(iniPath); //初始化数据
+      if(iniQuery(iniPath,"Initialize","isShutdownNormally") == "0")
+      {
+          Logger::logger.error("[Error]检测到插件未正常退出(是否直接关掉了终端，还是发生了 JVM 崩溃？)");
+          isAbnormalStopChecked = 1;
+      }
+      iniWrite(iniPath,"Initialize","isShutdownNormally","0");
+      Event::registerEvent<BotOnlineEvent>([](BotOnlineEvent OnlineEvent) {
+          Group Notify(181327275,OnlineEvent.bot.id);
+          Group Lianhehui(1070074632,OnlineEvent.bot.id);
+          if(isAbnormalStopChecked == 1)
+          {
+              Notify.sendMessage("机器人已从异常错误中恢复。(可能是直接关闭终端或发生了 JVM 崩溃)\n检测到上一次发生了异常退出，请查询后台日志了解详情。");
+              Sleep(1300);
+              Lianhehui.sendMessage("机器人已从异常错误中恢复。(可能是直接关闭终端或发生了 JVM 崩溃)\n检测到上一次发生了异常退出，请查询后台日志了解详情。");
+              isAbnormalStopChecked = 0;
+          }
+      });
       Event::registerEvent<GroupMessageEvent>([](GroupMessageEvent GroupMessage) { //群内消息的事件注册
           Group ReceivedGroup(GroupMessage.group.id(), GroupMessage.bot.id); // 实例化接收到的群对象
           Group Baozipu(604890935,GroupMessage.bot.id);
@@ -276,6 +293,18 @@ public:
                   std::string ResultMsg = iniQuery(iniPath,"LeaveRecord", QueryMember);
                   GroupMessage.group.sendMessage("对 "+ QueryMember + " 的离群查询：\n" + ResultMsg);
               }
+              if(GroupMessage.message.toMiraiCode().substr(0,5) == ".ban ")
+              {
+                  std::string TargetMember = GroupMessage.message.toMiraiCode().erase(0,5);
+                  iniWrite(iniPath,"banlist",TargetMember,"True");
+                  GroupMessage.group.sendMessage("已将 " + TargetMember + " 标记为入群封禁。");
+              }
+              if(GroupMessage.message.toMiraiCode().substr(0,7) == ".unban ")
+              {
+                  std::string TargetMember = GroupMessage.message.toMiraiCode().erase(0,7);
+                  iniWrite(iniPath,"banlist",TargetMember,"False");
+                  GroupMessage.group.sendMessage("已将 " + TargetMember + " 解除了入群封禁。");
+              }
           }
           
       });
@@ -289,15 +318,20 @@ public:
               std::string RequestID = std::to_string(JoinRequestEvent.requesterId);
               std::string QueryBanResult = iniQuery(iniPath,"banlist", RequestID);
               std::string QueryLeaveRecord = iniQuery(iniPath,"LeaveRecord",RequestID);
-              if(QueryBanResult == "未找到")
+              Logger::logger.info("[Info]入群申请事件: " + RequestID);
+              if(QueryBanResult == "True")
               {
+                  Logger::logger.info("[Info]检测的目标成员 " + RequestID + " 已被封禁，自动拒绝申请。");
                   Sleep(800);
-                  Notify.sendMessage("检测到包子铺入群申请，请及时处理!\n申请者:" + RequestID + "\n离群记录:" + QueryLeaveRecord);
+                  JoinRequestEvent.reject("您已被管理员封禁，拒绝加群。");
+                  Sleep(800);
+                  Notify.sendMessage("检测到已被封禁的成员申请入群，已自动拒绝。\n申请者:" + RequestID + "\n离群记录:" + QueryLeaveRecord);
               }
               else
               {
+                  Logger::logger.info("[Info]检测的目标成员 " + RequestID + " 无封禁信息。");
                   Sleep(800);
-                  JoinRequestEvent.reject("您已被管理员封禁，拒绝加群。");
+                  Notify.sendMessage("检测到包子铺入群申请，请及时处理!\n申请者:" + RequestID + "\n离群记录:" + QueryLeaveRecord);
               }
           }
       });
@@ -339,19 +373,25 @@ public:
               {
                   iniWrite(iniPath,"LeaveRecord",MemberID,ResponseTmp + "," + CurrentTime + LeaveType);
               }
-
+              Logger::logger.info("[Info]离群事件记录: " + MemberID + LeaveType);
           }
       });
       Event::registerEvent<MemberJoinEvent>([](MemberJoinEvent JoinedEvent){
-          Sleep(650);
-          JoinedEvent.group.sendMessage(JoinedEvent.member.nickOrNameCard() + ",欢迎来到包子铺服务器！\n请按群公告格式要求，将自己的群名片修改为游戏ID(不改会被清理)\n请仔细阅读 Wiki: http://wiki.xiaobaomc.cn:8093/index.php?title=%E5%8C%85%E5%AD%90%E9%93%BA%E6%9C%8D%E5%8A%A1%E5%99%A8\n如果 Wiki 有遗漏，请参看群公告内对各问题的解答。\n新来的成员必须使用正版登录，基岩版客户端请在群文件下载。基岩版正版登录和外置登录需要使用不同端口，请看群公告了解。\n如果没有正版请在群名片注明（无账号）否则会被清理！");
+          if(JoinedEvent.group.id() == 604890935) // 只处理包子铺群事件
+          {
+              Sleep(650);
+              JoinedEvent.group.sendMessage(iniQuery(iniPath,"Initialize","Announce"));
+          }
+
       });
+
   }
 
   // 退出函数
   void onDisable() override {
     /*插件结束前执行*/
     Logger::logger.info("[Info]插件正在关闭。");
+      iniWrite(iniPath,"Initialize","isShutdownNormally","1");
   }
 };
 
