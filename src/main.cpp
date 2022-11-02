@@ -16,11 +16,10 @@ const PluginConfig CPPPlugin::config{
         "2022-10-18"        // 可选：日期
 };
 
+//是否发生了非正常退出
 int isAbnormalStopChecked = 0;
 //是否启用监听踢出（全局变量）
 int isKickIgnoreEnable = 0;
-//常量 - 管理员数组，如发出者账号为管理员则执行对应命令
-const long long int Admins[10]={3212903564,344731666,1254207361,767607252,437333682,3476768863,2378612355,3100298105,2720844086};
 //是否取消群成员清理操作(标记使用)
 int isCleanCancelled = 0;
 CSimpleIniA RobotINI;//ini 文件操作对象
@@ -40,7 +39,7 @@ std::string iniQuery(std::string FilePath,std::string Section,std::string Name) 
     RobotINI.SetUnicode();
     RobotINI.LoadFile(FilePath.c_str());
     const char * ReturnValue = RobotINI.GetValue(Section.c_str(),Name.c_str(),"未找到");
-    Logger::logger.info("[INISystem]查询字段请求发送成功。");
+    Logger::logger.info("[INISystem]读字段请求发送成功。操作节: " + Section + ",操作字段名: " + Name + ",其值为 " + ReturnValue);
     int ReturnCode = RobotINI.SaveFile(FilePath.c_str());
     if(ReturnCode < 0)
     {
@@ -59,7 +58,7 @@ void iniWrite(std::string FilePath,std::string Section,std::string Name,std::str
     RobotINI.SetUnicode();
     RobotINI.LoadFile(FilePath.c_str());
     RobotINI.SetValue(Section.c_str(),Name.c_str(),Value.c_str());
-    Logger::logger.info("[INISystem]变更字段请求发送成功。");
+    Logger::logger.info("[INISystem]写字段请求发送成功。操作节: " + Section + ",操作字段名: " + Name + ",操作字段值: " + Value);
     int ReturnCode = RobotINI.SaveFile(FilePath.c_str());
     if(ReturnCode < 0)
     {
@@ -105,7 +104,7 @@ public:
           Group Baozipu(604890935,GroupMessage.bot.id);
           Group Notify(181327275,GroupMessage.bot.id);
           Group Lianhehui(1070074632,GroupMessage.bot.id);
-          if(GroupMessage.group.id() == 604890935 && std::find(std::begin(Admins),std::end(Admins),GroupMessage.sender.id())) // 群消息来源：包子铺，只有管理员操作才能触发命令
+          if(GroupMessage.group.id() == 604890935  && iniQuery(iniPath,"Admins",std::to_string(GroupMessage.sender.id())) == "True") // 群消息来源：包子铺，只有管理员操作才能触发命令
           {
               if(GroupMessage.message == MessageChain(PlainText(".dismisskick"))) //.dismisskick 调用的命令
               {
@@ -133,6 +132,17 @@ public:
                       GroupMessage.group.sendMessage(("目前踢出监听未在运行。\n如需恢复，请使用 .dismisskick 恢复。"));
                   }
               }
+              if(GroupMessage.message.toMiraiCode().substr(0,12) == ".randommute " && iniQuery(iniPath,"Admins",std::to_string(GroupMessage.sender.id())) == "True")
+              {
+                  long long int TargetMember = atoll(GroupMessage.message.toMiraiCode().erase(0,12).c_str());
+                  GroupMessage.group.sendMessage("抽夹子啦！\n正在为 " + std::to_string(TargetMember) + " 抽取夹子");
+                  Member MuteTarget(TargetMember,GroupMessage.group.id(),GroupMessage.bot.id);
+                  int a=1800,b=1296000;
+                  int BanTime = (rand() % (b-a+1))+ a;
+                  Sleep(3600);
+                  GroupMessage.group.sendMessage("送给 " + std::to_string(TargetMember) + " 一个时长为 " + std::to_string(BanTime) + " 的夹子！");
+                  MuteTarget.mute(BanTime);
+              }
           }
           if(GroupMessage.group.id() == 1070074632 || GroupMessage.group.id() == 181327275 || GroupMessage.group.id() == 604890935){
               if(GroupMessage.message == MessageChain(PlainText(".cpptest")))
@@ -140,7 +150,7 @@ public:
                   GroupMessage.group.sendMessage("测试成功。\n此消息由基于 C++ 的 MiraiCP 插件发出。");
                   Logger::logger.info("[Operation]基本命令:测试消息");
               }
-              if(GroupMessage.message == MessageChain(PlainText(".checknick")))
+              if(GroupMessage.message == MessageChain(PlainText(".checknick")) && iniQuery(iniPath,"Admins",std::to_string(GroupMessage.sender.id())) == "True")
               {
                   int InvalidNickUserCount=0;
                   Logger::logger.info("[Operation]管理员操作:检测群名片。");
@@ -183,12 +193,12 @@ public:
                   Sleep(1000);
                   GroupMessage.group.sendMessage("检测完毕，检测到不合规群名片数:"+std::to_string(InvalidNickUserCount)+"\n结果已发送至上方群文件。");
               }
-              if(GroupMessage.message == MessageChain(PlainText(".cleancancel")))
+              if(GroupMessage.message == MessageChain(PlainText(".cleancancel")) && iniQuery(iniPath,"Admins",std::to_string(GroupMessage.sender.id())) == "True")
               {
                   isCleanCancelled = 1;
                   GroupMessage.group.sendMessage("清理操作取消指令已发出。");
               }
-              if(GroupMessage.message == MessageChain(PlainText(".cleannick")))
+              if(GroupMessage.message == MessageChain(PlainText(".cleannick"))  && iniQuery(iniPath,"Admins",std::to_string(GroupMessage.sender.id())) == "True")
               {
                   int CleanedUser = 0; //标记已清理的成员数
                   Logger::logger.info("[Operation]管理员操作:清理不合规群名片的群成员。");
@@ -277,33 +287,46 @@ public:
                   Sleep(1000);
                   GroupMessage.group.sendMessage("清理完毕，清理了 "+ std::to_string(CleanedUser)+" 位群成员。\n结果已发送至上方群文件。");
               }
-              if(GroupMessage.message == MessageChain(PlainText(".testMiraiCode")))
+              if(GroupMessage.message.toMiraiCode().substr(0,15) == ".testMiraiCode "  && iniQuery(iniPath,"Admins",std::to_string(GroupMessage.sender.id())) == "True")
               {
-                  GroupMessage.group.sendMessage("提示：此命令仅供开发用途。\n此条消息的 MiraiCode 格式为:\n" + GroupMessage.message.toMiraiCode());
+                  std::string MessageSrc = GroupMessage.message.toMiraiCode().erase(0,15);
+                  GroupMessage.group.sendMessage("提示：此命令仅供开发用途。\n此条消息的 MiraiCode 格式为:\n" + MessageSrc);
               }
-              if(GroupMessage.message.toMiraiCode().substr(0,10) == ".queryban ")
+              if(GroupMessage.message.toMiraiCode().substr(0,10) == ".queryban " && iniQuery(iniPath,"Admins",std::to_string(GroupMessage.sender.id())) == "True")
               {
                   std::string QueryMember = GroupMessage.message.toMiraiCode().erase(0, 10);
                   std::string ResultMsg = iniQuery(iniPath,"banlist", QueryMember);
                   GroupMessage.group.sendMessage("对 "+ QueryMember + " 的封禁查询：\n" + ResultMsg);
               }
-              if(GroupMessage.message.toMiraiCode().substr(0,12) == ".queryleave ")
+              if(GroupMessage.message.toMiraiCode().substr(0,12) == ".queryleave " && iniQuery(iniPath,"Admins",std::to_string(GroupMessage.sender.id())) == "True")
               {
                   std::string QueryMember = GroupMessage.message.toMiraiCode().erase(0, 12);
                   std::string ResultMsg = iniQuery(iniPath,"LeaveRecord", QueryMember);
                   GroupMessage.group.sendMessage("对 "+ QueryMember + " 的离群查询：\n" + ResultMsg);
               }
-              if(GroupMessage.message.toMiraiCode().substr(0,5) == ".ban ")
+              if(GroupMessage.message.toMiraiCode().substr(0,5) == ".ban " && iniQuery(iniPath,"Admins",std::to_string(GroupMessage.sender.id())) == "True")
               {
                   std::string TargetMember = GroupMessage.message.toMiraiCode().erase(0,5);
                   iniWrite(iniPath,"banlist",TargetMember,"True");
                   GroupMessage.group.sendMessage("已将 " + TargetMember + " 标记为入群封禁。");
               }
-              if(GroupMessage.message.toMiraiCode().substr(0,7) == ".unban ")
+              if(GroupMessage.message.toMiraiCode().substr(0,7) == ".unban " && iniQuery(iniPath,"Admins",std::to_string(GroupMessage.sender.id())) == "True")
               {
                   std::string TargetMember = GroupMessage.message.toMiraiCode().erase(0,7);
                   iniWrite(iniPath,"banlist",TargetMember,"False");
                   GroupMessage.group.sendMessage("已将 " + TargetMember + " 解除了入群封禁。");
+              }
+              if(GroupMessage.message.toMiraiCode().substr(0,10) == ".addAdmin " && iniQuery(iniPath,"Admins",std::to_string(GroupMessage.sender.id())) == "True")
+              {
+                  std::string TargetAdmin = GroupMessage.message.toMiraiCode().erase(0,10);
+                  iniWrite(iniPath,"Admins",TargetAdmin,"True");
+                  GroupMessage.group.sendMessage("已将 " + TargetAdmin + " 设置为机器人管理员。");
+              }
+              if(GroupMessage.message.toMiraiCode().substr(0,10) == ".delAdmin " && iniQuery(iniPath,"Admins",std::to_string(GroupMessage.sender.id())) == "True")
+              {
+                  std::string TargetAdmin = GroupMessage.message.toMiraiCode().erase(0,10);
+                  iniWrite(iniPath,"Admins",TargetAdmin,"False");
+                  GroupMessage.group.sendMessage("不再将 " + TargetAdmin + " 设置为机器人管理员。");
               }
           }
           
