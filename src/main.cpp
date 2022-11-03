@@ -104,9 +104,9 @@ public:
           Group Baozipu(604890935,GroupMessage.bot.id);
           Group Notify(181327275,GroupMessage.bot.id);
           Group Lianhehui(1070074632,GroupMessage.bot.id);
-          if(GroupMessage.group.id() == 604890935  && iniQuery(iniPath,"Admins",std::to_string(GroupMessage.sender.id())) == "True") // 群消息来源：包子铺，只有管理员操作才能触发命令
+          if(GroupMessage.group.id() == 604890935) // 群消息来源：包子铺，只有管理员操作才能触发命令
           {
-              if(GroupMessage.message == MessageChain(PlainText(".dismisskick"))) //.dismisskick 调用的命令
+              if(GroupMessage.message.toMiraiCode() == ".dismisskick" && iniQuery(iniPath,"Admins",std::to_string(GroupMessage.sender.id())) == "True") //.dismisskick 调用的命令
               {
                   if(isKickIgnoreEnable == 0)
                   {
@@ -121,7 +121,7 @@ public:
                       Logger::logger.info("[Operation]管理员操作:恢复踢出事件");
                   }
               }
-              if(GroupMessage.message == MessageChain(PlainText(".detectkick"))) //踢出检测是否启用
+              if(GroupMessage.message.toMiraiCode() == ".detectkick"  && iniQuery(iniPath,"Admins",std::to_string(GroupMessage.sender.id())) == "True") //踢出检测是否启用
               {
                   if(isKickIgnoreEnable == 0)
                   {
@@ -145,12 +145,12 @@ public:
               }
           }
           if(GroupMessage.group.id() == 1070074632 || GroupMessage.group.id() == 181327275 || GroupMessage.group.id() == 604890935){
-              if(GroupMessage.message == MessageChain(PlainText(".cpptest")))
+              if(GroupMessage.message.toMiraiCode() == ".cpptest")
               {
                   GroupMessage.group.sendMessage("测试成功。\n此消息由基于 C++ 的 MiraiCP 插件发出。");
                   Logger::logger.info("[Operation]基本命令:测试消息");
               }
-              if(GroupMessage.message == MessageChain(PlainText(".checknick")) && iniQuery(iniPath,"Admins",std::to_string(GroupMessage.sender.id())) == "True")
+              if(GroupMessage.message.toMiraiCode() == ".checknick" && iniQuery(iniPath,"Admins",std::to_string(GroupMessage.sender.id())) == "True")
               {
                   int InvalidNickUserCount=0;
                   Logger::logger.info("[Operation]管理员操作:检测群名片。");
@@ -193,12 +193,12 @@ public:
                   Sleep(1000);
                   GroupMessage.group.sendMessage("检测完毕，检测到不合规群名片数:"+std::to_string(InvalidNickUserCount)+"\n结果已发送至上方群文件。");
               }
-              if(GroupMessage.message == MessageChain(PlainText(".cleancancel")) && iniQuery(iniPath,"Admins",std::to_string(GroupMessage.sender.id())) == "True")
+              if(GroupMessage.message.toMiraiCode() == ".cleancancel" && iniQuery(iniPath,"Admins",std::to_string(GroupMessage.sender.id())) == "True")
               {
                   isCleanCancelled = 1;
                   GroupMessage.group.sendMessage("清理操作取消指令已发出。");
               }
-              if(GroupMessage.message == MessageChain(PlainText(".cleannick"))  && iniQuery(iniPath,"Admins",std::to_string(GroupMessage.sender.id())) == "True")
+              if(GroupMessage.message.toMiraiCode() == ".cleannick"  && iniQuery(iniPath,"Admins",std::to_string(GroupMessage.sender.id())) == "True")
               {
                   int CleanedUser = 0; //标记已清理的成员数
                   Logger::logger.info("[Operation]管理员操作:清理不合规群名片的群成员。");
