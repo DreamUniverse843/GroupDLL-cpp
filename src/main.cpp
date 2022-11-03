@@ -240,6 +240,17 @@ public:
                               {
                                   try { //踢出时捕获异常，以免崩端
                                       DetectedMember.kick("您的群名片不合乎格式要求。");
+                                      std::string MemberID = std::to_string(MemberList.at(i));
+                                      std::string LeaveType = "(未改名移出)";
+                                      std::string ResponseTmp = iniQuery(iniPath,"LeaveRecord",MemberID);
+                                      if(ResponseTmp == "未找到")
+                                      {
+                                          iniWrite(iniPath,"LeaveRecord", MemberID, CurrentTime + LeaveType);
+                                      }
+                                      else
+                                      {
+                                          iniWrite(iniPath,"LeaveRecord",MemberID,ResponseTmp + "," + CurrentTime + LeaveType);
+                                      }
                                       std::string OutputResult = "检测到不合规的群名片，正在清理。位置：" + std::to_string(i) + " ,成员号: " + std::to_string(DetectedMember.id()) + " ,群名片为: " + DetectedMember.nickOrNameCard();
                                       CheckNickLog << OutputResult << std::endl;
                                       CleanedUser++;
@@ -403,7 +414,8 @@ public:
           if(JoinedEvent.group.id() == 604890935) // 只处理包子铺群事件
           {
               Sleep(650);
-              JoinedEvent.group.sendMessage(iniQuery(iniPath,"Initialize","Announce"));
+              MiraiCode Msg("[mirai:at:" + std::to_string(JoinedEvent.member.id()) + "] 欢迎来到包子铺服务器！\n请按群公告格式要求，将自己的群名片修改为游戏ID(不改会被清理)\n请仔细阅读 Wiki: http://wiki.xiaobaomc.cn:8093/index.php?title=%E5%8C%85%E5%AD%90%E9%93%BA%E6%9C%8D%E5%8A%A1%E5%99%A8\n如果 Wiki 有遗漏，请参看群公告内对各问题的解答。\n新来的成员必须使用正版登录，基岩版客户端请在群文件下载。基岩版正版登录和外置登录需要使用不同端口，请看群公告了解。\n如果没有正版请在群名片注明（无账号）否则会被清理！");
+              JoinedEvent.group.sendMessage(Msg);
           }
 
       });
