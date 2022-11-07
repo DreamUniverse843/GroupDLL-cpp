@@ -1,5 +1,5 @@
 // MiraiCP依赖文件(只需要引入这一个)
-#define _CRT_SECURE_NO_WARNINGS 1
+#define _CRT_SECURE_NO_WARNINGS 1 //无视 MSVC 的不安全函数提示
 #include <MiraiCP.hpp>
 #include <fstream>
 #include "windows.h"
@@ -22,7 +22,9 @@ int isAbnormalStopChecked = 0;
 int isKickIgnoreEnable = 0;
 //是否取消群成员清理操作(标记使用)
 int isCleanCancelled = 0;
+
 CSimpleIniA RobotINI;//ini 文件操作对象
+//常量，配置文件的绝对路径(相对路径会出问题)
 const std::string iniPath = "C:\\Users\\Server\\Desktop\\Mirai.ini";
 
 void iniInitialize(std::string FilePath) //初始化配置文件存储
@@ -53,7 +55,7 @@ std::string iniQuery(std::string FilePath,std::string Section,std::string Name) 
     }
 }
 
-void iniWrite(std::string FilePath,std::string Section,std::string Name,std::string Value)
+void iniWrite(std::string FilePath,std::string Section,std::string Name,std::string Value)//向配置文件写入
 {
     RobotINI.SetUnicode();
     RobotINI.LoadFile(FilePath.c_str());
@@ -80,7 +82,7 @@ public:
   void onEnable() override {
     // 请在此处监听
       Logger::logger.info("[Info]插件正在启动。如群内无法接收到机器人消息，则可能处于风控状态。");
-      Logger::logger.info("[System]初始化黑名单数据文件中");
+      Logger::logger.info("[System]初始化数据文件中");
       iniInitialize(iniPath); //初始化数据
       if(iniQuery(iniPath,"Initialize","isShutdownNormally") == "0")
       {
@@ -171,7 +173,7 @@ public:
                   std::vector<unsigned long long>MemberList = Baozipu.getMemberList();
                   GroupMessage.group.sendMessage("获取群成员元素完毕，当前群成员数为 " + std::to_string(MemberList.size()) + "\n已启动检测任务。");
                   Logger::logger.info("[System]群成员清单拉取完毕，长度 " + std::to_string(MemberList.size()));
-                  for(int i=0;i<=MemberList.size()-1;i++)
+                  for(int i=0;i<=MemberList.size()-1;i++) //数组长度必须减 1，否则会越界
                   {
                       MiraiCP::Member DetectedMember(MemberList.at(i),Baozipu.id(),GroupMessage.bot.id); //对检测目标构建对象
                       if(DetectedMember.nickOrNameCard().find("游戏ID:") == std::string::npos
@@ -203,7 +205,6 @@ public:
                   int CleanedUser = 0; //标记已清理的成员数
                   Logger::logger.info("[Operation]管理员操作:清理不合规群名片的群成员。");
                   auto now = std::chrono::system_clock::now();
-                  //通过不同精度获取相差的毫秒数
                   time_t tt = std::chrono::system_clock::to_time_t(now);
                   auto time_tm = localtime(&tt);
                   char strTime[25] = { 0 };
@@ -336,8 +337,27 @@ public:
               if(GroupMessage.message.toMiraiCode().substr(0,10) == ".delAdmin " && iniQuery(iniPath,"Admins",std::to_string(GroupMessage.sender.id())) == "True")
               {
                   std::string TargetAdmin = GroupMessage.message.toMiraiCode().erase(0,10);
-                  iniWrite(iniPath,"Admins",TargetAdmin,"False");
-                  GroupMessage.group.sendMessage("不再将 " + TargetAdmin + " 设置为机器人管理员。");
+                  if(std::to_string(GroupMessage.sender.id()) == TargetAdmin)
+                  {
+                      Sleep(500);
+                      GroupMessage.group.sendMessage("出于安全目的，管理员不能删除自身。\n如确需删除，请到配置文件内进行修改。");
+                  }
+                  else
+                  {
+                      iniWrite(iniPath,"Admins",TargetAdmin,"False");
+                      GroupMessage.group.sendMessage("不再将 " + TargetAdmin + " 设置为机器人管理员。");
+                  }
+
+              }
+              if(GroupMessage.message.toMiraiCode().substr(0,9) == ".getFile " && iniQuery(iniPath,"Admins",std::to_string(GroupMessage.sender.id())) == "True")
+              {
+                  std::string TargetFilePath = GroupMessage.message.toMiraiCode().erase(0,9);
+                  Sleep(500);
+                  GroupMessage.group.sendMessage("即将发送远程文件，目录:\n" + TargetFilePath);
+                  Sleep(200);
+                  RemoteFile tmp = GroupMessage.group.sendFile("/GetRemote.rename",TargetFilePath);
+                  Sleep(250);
+                  GroupMessage.group.sendMessage("远程文件发送成功，请自行将文件重命名。");
               }
           }
           
