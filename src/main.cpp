@@ -22,6 +22,9 @@ int isAbnormalStopChecked = 0;
 int isKickIgnoreEnable = 0;
 //是否取消群成员清理操作(标记使用)
 int isCleanCancelled = 0;
+// 相同成员重复发言计数器
+int memberRepeated = 10000;
+int memberRepeatedCount = 0;
 
 CSimpleIniA RobotINI;//ini 文件操作对象
 //常量，配置文件的绝对路径(相对路径会出问题)
@@ -41,16 +44,16 @@ std::string iniQuery(std::string FilePath,std::string Section,std::string Name) 
     RobotINI.SetUnicode();
     RobotINI.LoadFile(FilePath.c_str());
     const char * ReturnValue = RobotINI.GetValue(Section.c_str(),Name.c_str(),"未找到");
-    Logger::logger.info("[INISystem]读字段请求发送成功。操作节: " + Section + ",操作字段名: " + Name + ",其值为 " + ReturnValue);
+    //Logger::logger.info("[INISystem]读字段请求发送成功。操作节: " + Section + ",操作字段名: " + Name + ",其值为 " + ReturnValue);
     int ReturnCode = RobotINI.SaveFile(FilePath.c_str());
     if(ReturnCode < 0)
     {
-        Logger::logger.info("[INISystem]文件写入出现问题。");
+        //Logger::logger.info("[INISystem]文件写入出现问题。");
         return "未找到";
     }
     else
     {
-        Logger::logger.info("[INISystem]文件写入成功。");
+        //Logger::logger.info("[INISystem]文件写入成功。");
         return ReturnValue;
     }
 }
@@ -60,16 +63,33 @@ void iniWrite(std::string FilePath,std::string Section,std::string Name,std::str
     RobotINI.SetUnicode();
     RobotINI.LoadFile(FilePath.c_str());
     RobotINI.SetValue(Section.c_str(),Name.c_str(),Value.c_str());
-    Logger::logger.info("[INISystem]写字段请求发送成功。操作节: " + Section + ",操作字段名: " + Name + ",操作字段值: " + Value);
+    //Logger::logger.info("[INISystem]写字段请求发送成功。操作节: " + Section + ",操作字段名: " + Name + ",操作字段值: " + Value);
     int ReturnCode = RobotINI.SaveFile(FilePath.c_str());
     if(ReturnCode < 0)
     {
-        Logger::logger.info("[INISystem]文件写入出现问题。");
+        //Logger::logger.info("[INISystem]文件写入出现问题。");
     }
     else
     {
-        Logger::logger.info("[INISystem]文件写入成功。");
+        //Logger::logger.info("[INISystem]文件写入成功。");
     }
+}
+
+boolean isSubStrExist(std::string str)
+{
+    //Logger::logger.info("子串校验，传入为 " + str);
+    int SubStrCount = atoi(iniQuery(iniPath,"BannedSubStr","SubStrCount").c_str());
+    //Logger::logger.info("配置文件内有 " + std::to_string(SubStrCount) + " 条子串待校验");
+    for(int i=1;i<=SubStrCount;i++)
+    {
+        //Logger::logger.info("开始校验子串 " + std::to_string(i));
+        if(str.find(iniQuery(iniPath,"BannedSubStr",std::to_string(i))) != std::string::npos)
+        {
+            Logger::logger.info("检测到包含子串 " + std::to_string(i));
+            return true;
+        }
+    }
+    return false;
 }
 // 插件实例
 class Main : public CPPPlugin {
@@ -108,6 +128,41 @@ public:
           Group Lianhehui(1070074632,GroupMessage.bot.id);
           if(GroupMessage.group.id() == 604890935) // 群消息来源：包子铺，只有管理员操作才能触发命令
           {
+              /* 预留反复读功能
+              if(GroupMessage.sender.id() == memberRepeated)
+              {
+                  memberRepeatedCount++;
+                  if(memberRepeatedCount > 3)
+                  {
+                      GroupMessage.message.source->recall();
+                      GroupMessage.sender.mute(1800);
+                      GroupMessage.group.sendMessage("请勿刷屏");
+                  }
+              }
+              else
+              {
+                  memberRepeated = GroupMessage.sender.id();
+                  memberRepeatedCount = 0;
+              }
+               */
+              if(iniQuery(iniPath,"BannedWords",GroupMessage.message.toMiraiCode()) == "1")
+              {
+                  GroupMessage.message.source->recall();
+                  Logger::logger.info("[System]检测到黑名单词汇 " + GroupMessage.message.toMiraiCode() + " ,正在撤回");
+              }
+              else
+              {
+                  if(isSubStrExist(GroupMessage.message.toMiraiCode()))
+                  {
+                      GroupMessage.message.source->recall();
+                      Logger::logger.info("[System]检测到 " + GroupMessage.message.toMiraiCode() + " 中包含需屏蔽的子串,正在撤回");
+                  }
+                  if(GroupMessage.message.toMiraiCode().find(" 6") != std::string::npos)
+                  {
+                      GroupMessage.message.source->recall();
+                      Logger::logger.info("[System]检测到 " + GroupMessage.message.toMiraiCode() + " 中包含需屏蔽的子串 \" 6\",正在撤回");
+                  }
+              }
               if(GroupMessage.message.toMiraiCode() == ".dismisskick" && iniQuery(iniPath,"Admins",std::to_string(GroupMessage.sender.id())) == "True") //.dismisskick 调用的命令
               {
                   if(isKickIgnoreEnable == 0)
@@ -358,6 +413,24 @@ public:
                   RemoteFile tmp = GroupMessage.group.sendFile("/GetRemote.rename",TargetFilePath);
                   Sleep(250);
                   GroupMessage.group.sendMessage("远程文件发送成功，请自行将文件重命名。");
+              }
+              if(GroupMessage.message.toMiraiCode().substr(0,11) == ".addbanstr " && iniQuery(iniPath,"Admins",std::to_string(GroupMessage.sender.id())) == "True")
+              {
+                  int CurrentSubStrAmount = atoi(iniQuery(iniPath,"BannedSubStr","SubStrCount").c_str());
+                  CurrentSubStrAmount++;
+                  std::string BannedSubStr = GroupMessage.message.toMiraiCode().erase(0,11);
+                  iniWrite(iniPath,"BannedSubStr",std::to_string(CurrentSubStrAmount),BannedSubStr);
+                  iniWrite(iniPath,"BannedSubStr","SubStrCount",std::to_string(CurrentSubStrAmount));
+                  GroupMessage.group.sendMessage("已添加第 " + std::to_string(CurrentSubStrAmount) + " 个屏蔽子串。");
+                  Logger::logger.info("已添加第 " + std::to_string(CurrentSubStrAmount) + " 个屏蔽子串: " + BannedSubStr);
+              }
+              if(GroupMessage.message.toMiraiCode() == ".banstrnum" && iniQuery(iniPath,"Admins",std::to_string(GroupMessage.sender.id())) == "True")
+              {
+                  GroupMessage.group.sendMessage("目前有 " + iniQuery(iniPath,"BannedSubStr","SubStrCount") + " 条屏蔽子串。");
+              }
+              if(GroupMessage.message.toMiraiCode().substr(0,9) == ".resolve " && iniQuery(iniPath,"Admins",std::to_string(GroupMessage.sender.id())) == "True")
+              {
+                  GroupMessage.group.sendMessage(MiraiCP::MiraiCode(GroupMessage.message.toMiraiCode().erase(0,9)));
               }
           }
           
