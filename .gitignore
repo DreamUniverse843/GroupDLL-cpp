@@ -1,6 +1,7 @@
 # self defined
 build/
 cmake*/
+.vs/
 
 # Prerequisites
 *.d

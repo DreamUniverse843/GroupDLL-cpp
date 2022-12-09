@@ -152,7 +152,7 @@ public:
               }
               else
               {
-                  if(isSubStrExist(GroupMessage.message.toMiraiCode()))
+                  if(isSubStrExist(GroupMessage.message.toMiraiCode()) && GroupMessage.message.toMiraiCode().find("[mirai:image:{") == std::string::npos)
                   {
                       GroupMessage.message.source->recall();
                       Logger::logger.info("[System]检测到 " + GroupMessage.message.toMiraiCode() + " 中包含需屏蔽的子串,正在撤回");
