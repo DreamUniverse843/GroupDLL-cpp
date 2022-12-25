@@ -91,6 +91,21 @@ boolean isSubStrExist(std::string str)
     }
     return false;
 }
+std::string getSubStr(std::string str)
+{
+    int SubStrCount = atoi(iniQuery(iniPath,"BannedSubStr","SubStrCount").c_str());
+    //Logger::logger.info("配置文件内有 " + std::to_string(SubStrCount) + " 条子串待校验");
+    for(int i=1;i<=SubStrCount;i++)
+    {
+        //Logger::logger.info("开始校验子串 " + std::to_string(i));
+        if(str.find(iniQuery(iniPath,"BannedSubStr",std::to_string(i))) != std::string::npos)
+        {
+            Logger::logger.info("检测到包含子串 " + std::to_string(i));
+            return iniQuery(iniPath,"BannenSubStr",std::to_string(i));
+        }
+    }
+    return "none";
+}
 // 插件实例
 class Main : public CPPPlugin {
 public:
@@ -149,6 +164,7 @@ public:
               {
                   GroupMessage.message.source->recall();
                   Logger::logger.info("[System]检测到黑名单词汇 " + GroupMessage.message.toMiraiCode() + " ,正在撤回");
+                  Notify.sendMessage("RecallLogger:\n撤回类型:黑名单全字匹配\n触发用户:" + std::to_string(GroupMessage.sender.id()) + "\n发送内容:" + GroupMessage.message.toMiraiCode());
               }
               else
               {
@@ -156,11 +172,14 @@ public:
                   {
                       GroupMessage.message.source->recall();
                       Logger::logger.info("[System]检测到 " + GroupMessage.message.toMiraiCode() + " 中包含需屏蔽的子串,正在撤回");
+                      Notify.sendMessage("RecallLogger:\n撤回类型:子串匹配\n触发用户:" + std::to_string(GroupMessage.sender.id()) + "\n发送内容:" + GroupMessage.message.toMiraiCode() + "\n匹配子串:" +
+                                                 getSubStr(GroupMessage.message.toMiraiCode()));
                   }
                   if(GroupMessage.message.toMiraiCode().find(" 6") != std::string::npos)
                   {
                       GroupMessage.message.source->recall();
                       Logger::logger.info("[System]检测到 " + GroupMessage.message.toMiraiCode() + " 中包含需屏蔽的子串 \" 6\",正在撤回");
+                      Notify.sendMessage("RecallLogger:\n撤回类型:子串匹配\n触发用户:" + std::to_string(GroupMessage.sender.id()) + "\n发送内容:" + GroupMessage.message.toMiraiCode() + "\n匹配子串:\" 6\"");
                   }
               }
               if(GroupMessage.message.toMiraiCode() == ".dismisskick" && iniQuery(iniPath,"Admins",std::to_string(GroupMessage.sender.id())) == "True") //.dismisskick 调用的命令
@@ -241,6 +260,25 @@ public:
                           CheckNickLog << OutputResult << std::endl;
                           InvalidNickUserCount++;
                       }
+                      else if(DetectedMember.nickOrNameCard()=="游戏ID:"
+                              || DetectedMember.nickOrNameCard()=="游戏id:"
+                              || DetectedMember.nickOrNameCard()=="游戏ID："
+                              || DetectedMember.nickOrNameCard()=="游戏id："
+                              || DetectedMember.nickOrNameCard()=="[无账号]")
+                      {
+                          std::string OutputResult = "检测到群名片缺少必要的昵称，无法区分成员身份。位置：" + std::to_string(i) + " ,成员号: " + std::to_string(DetectedMember.id()) + " ,群名片为: " + DetectedMember.nickOrNameCard();
+                          CheckNickLog << OutputResult << std::endl;
+                          InvalidNickUserCount++;
+                      }
+                      else if(DetectedMember.nickOrNameCard().find("游戏ID") != std::string::npos || DetectedMember.nickOrNameCard().find("游戏id") != std::string::npos)
+                      {
+                          if(DetectedMember.nickOrNameCard().find("无账号") != std::string::npos || DetectedMember.nickOrNameCard().find("无帐号") != std::string::npos)
+                          {
+                              std::string OutputResult = "检测到群名片表意不明，无法确认是否为无账号成员。位置：" + std::to_string(i) + " ,成员号: " + std::to_string(DetectedMember.id()) + " ,群名片为: " + DetectedMember.nickOrNameCard();
+                              CheckNickLog << OutputResult << std::endl;
+                              InvalidNickUserCount++;
+                          }
+                      }
                   }
                   CheckNickLog << "\n检测完毕，检测到的不合规群名片数: " + std::to_string(InvalidNickUserCount) << std::endl;
                   CheckNickLog << "此文件由包子铺群机器人系统自动生成。"<< std::endl;
@@ -255,14 +293,13 @@ public:
                   isCleanCancelled = 1;
                   GroupMessage.group.sendMessage("清理操作取消指令已发出。");
               }
-              if(GroupMessage.message.toMiraiCode() == ".cleannick"  && iniQuery(iniPath,"Admins",std::to_string(GroupMessage.sender.id())) == "True")
-              {
+              if(GroupMessage.message.toMiraiCode() == ".cleannick"  && iniQuery(iniPath,"Admins",std::to_string(GroupMessage.sender.id())) == "True") {
                   int CleanedUser = 0; //标记已清理的成员数
                   Logger::logger.info("[Operation]管理员操作:清理不合规群名片的群成员。");
                   auto now = std::chrono::system_clock::now();
                   time_t tt = std::chrono::system_clock::to_time_t(now);
                   auto time_tm = localtime(&tt);
-                  char strTime[25] = { 0 };
+                  char strTime[25] = {0};
                   sprintf(strTime, "%d-%02d-%02d_%02d-%02d-%02d", time_tm->tm_year + 1900,
                           time_tm->tm_mon + 1, time_tm->tm_mday, time_tm->tm_hour,
                           time_tm->tm_min, time_tm->tm_sec);
@@ -270,89 +307,139 @@ public:
                   Logger::logger.info("[System]当前时间是 " + CurrentTime);
                   isCleanCancelled = 0;
                   Sleep(500);
-                  std::ofstream CheckNickLog("C:\\Users\\Server\\Desktop\\CleanNickLog.txt",std::ios_base::out | std::ios_base::trunc);
+                  std::ofstream CheckNickLog("C:\\Users\\Server\\Desktop\\CleanNickLog.txt",
+                                             std::ios_base::out | std::ios_base::trunc);
                   std::string FirstLine = "群成员名片清理操作，请求时间: ";
                   CheckNickLog << FirstLine << strTime << std::endl;//写出操作时间到日志
-                  GroupMessage.group.sendMessage("十秒后将执行不合规成员清理操作。\n如取消操作，请输入 .cleancancel。\n因线程限制，执行期间无法取消。");
+                  GroupMessage.group.sendMessage(
+                          "十秒后将执行不合规成员清理操作。\n如取消操作，请输入 .cleancancel。\n因线程限制，执行期间无法取消。");
                   Sleep(10000);
-                  if(isCleanCancelled == 0)
-                  {
+                  if (isCleanCancelled == 0) {
                       GroupMessage.group.sendMessage("清理任务已启动。");
-                      std::vector<unsigned long long>MemberList = Baozipu.getMemberList();
+                      std::vector<unsigned long long> MemberList = Baozipu.getMemberList();
                       Logger::logger.info("[System]群成员清单拉取完毕，长度 " + std::to_string(MemberList.size()));
                       Sleep(300);
-                      GroupMessage.group.sendMessage("获取群成员元素完毕，当前群成员数为 " + std::to_string(MemberList.size()));
+                      GroupMessage.group.sendMessage(
+                              "获取群成员元素完毕，当前群成员数为 " + std::to_string(MemberList.size()));
                       Sleep(1500);
-                      for(int i=0;i<=MemberList.size()-1;i++)
-                      {
-                          if(isCleanCancelled == 0)
-                          {
-                              MiraiCP::Member DetectedMember(MemberList.at(i),Baozipu.id(),GroupMessage.bot.id); //对检测目标构建对象
-                              if(DetectedMember.nickOrNameCard().find("游戏ID:") == std::string::npos
-                                 && DetectedMember.nickOrNameCard().find("游戏ID：") == std::string::npos
-                                 && DetectedMember.nickOrNameCard().find("[无账号]") == std::string::npos
-                                 && DetectedMember.nickOrNameCard().find("游戏id：") == std::string::npos
-                                 && DetectedMember.nickOrNameCard().find("游戏id:") == std::string::npos)
-                              {
-                                  try { //踢出时捕获异常，以免崩端
+                      for (int i = 0; i <= MemberList.size() - 1; i++) {
+                          MiraiCP::Member DetectedMember(MemberList.at(i), Baozipu.id(),
+                                                         GroupMessage.bot.id); //对检测目标构建对象
+                          try {
+                              if (isCleanCancelled == 0) {
+                                  if (DetectedMember.nickOrNameCard().find("游戏ID:") == std::string::npos
+                                      && DetectedMember.nickOrNameCard().find("游戏ID：") == std::string::npos
+                                      && DetectedMember.nickOrNameCard().find("[无账号]") == std::string::npos
+                                      && DetectedMember.nickOrNameCard().find("游戏id：") == std::string::npos
+                                      && DetectedMember.nickOrNameCard().find("游戏id:") == std::string::npos) {
                                       DetectedMember.kick("您的群名片不合乎格式要求。");
                                       std::string MemberID = std::to_string(MemberList.at(i));
                                       std::string LeaveType = "(未改名移出)";
-                                      std::string ResponseTmp = iniQuery(iniPath,"LeaveRecord",MemberID);
-                                      if(ResponseTmp == "未找到")
-                                      {
-                                          iniWrite(iniPath,"LeaveRecord", MemberID, CurrentTime + LeaveType);
+                                      std::string ResponseTmp = iniQuery(iniPath, "LeaveRecord", MemberID);
+                                      if (ResponseTmp == "未找到") {
+                                          iniWrite(iniPath, "LeaveRecord", MemberID, CurrentTime + LeaveType);
+                                      } else {
+                                          iniWrite(iniPath, "LeaveRecord", MemberID,
+                                                   ResponseTmp + "," + CurrentTime + LeaveType);
                                       }
-                                      else
-                                      {
-                                          iniWrite(iniPath,"LeaveRecord",MemberID,ResponseTmp + "," + CurrentTime + LeaveType);
-                                      }
-                                      std::string OutputResult = "检测到不合规的群名片，正在清理。位置：" + std::to_string(i) + " ,成员号: " + std::to_string(DetectedMember.id()) + " ,群名片为: " + DetectedMember.nickOrNameCard();
+                                      std::string OutputResult =
+                                              "检测到不合规的群名片，正在清理。位置：" + std::to_string(i) + " ,成员号: " +
+                                              std::to_string(DetectedMember.id()) + " ,群名片为: " +
+                                              DetectedMember.nickOrNameCard();
                                       CheckNickLog << OutputResult << std::endl;
                                       CleanedUser++;
                                       Sleep(3200);
-                                  }
-                                  catch (BotException &err){
-                                      Logger::logger.error(err.what());
-                                  }
-                                  catch (MemberException &err){
-                                      if(err.type == 1)
-                                      {
-                                          Logger::logger.error("[Error]执行时未找到目标群。");
-                                      }
-                                      if(err.type == 2)
-                                      {
-                                          std::string ErrorStr = "[Error]执行踢出成员 " + std::to_string(DetectedMember.id()) + " (执行位置: " + std::to_string(i) +")时未找到目标群成员。(可能已经提前退群?)";
-                                          Logger::logger.error(ErrorStr);
-                                          GroupMessage.group.sendMessage(ErrorStr);
-                                          CheckNickLog << ErrorStr << std::endl;
-                                      }
-                                  }
 
+                                  } else if (DetectedMember.nickOrNameCard() == "游戏ID:"
+                                             || DetectedMember.nickOrNameCard() == "游戏id:"
+                                             || DetectedMember.nickOrNameCard() == "游戏ID："
+                                             || DetectedMember.nickOrNameCard() == "游戏id："
+                                             || DetectedMember.nickOrNameCard() == "[无账号]") {
+                                      DetectedMember.kick("您的群名片缺少必要的昵称，无法进行成员区分。");
+                                      std::string MemberID = std::to_string(MemberList.at(i));
+                                      std::string LeaveType = "(无昵称移出)";
+                                      std::string ResponseTmp = iniQuery(iniPath, "LeaveRecord", MemberID);
+                                      if (ResponseTmp == "未找到") {
+                                          iniWrite(iniPath, "LeaveRecord", MemberID, CurrentTime + LeaveType);
+                                      } else {
+                                          iniWrite(iniPath, "LeaveRecord", MemberID,
+                                                   ResponseTmp + "," + CurrentTime + LeaveType);
+                                      }
+                                      std::string OutputResult =
+                                              "检测到群名片缺少必要的昵称，无法区分成员身份，正在清理。位置：" +
+                                              std::to_string(i) + " ,成员号: " + std::to_string(DetectedMember.id()) +
+                                              " ,群名片为: " + DetectedMember.nickOrNameCard();
+                                      CheckNickLog << OutputResult << std::endl;
+                                      CleanedUser++;
+                                      Sleep(3200);
+                                  } else if (DetectedMember.nickOrNameCard().find("游戏ID") != std::string::npos ||
+                                             DetectedMember.nickOrNameCard().find("游戏id") != std::string::npos) {
+                                      if (DetectedMember.nickOrNameCard().find("无账号") != std::string::npos ||
+                                          DetectedMember.nickOrNameCard().find("无帐号") != std::string::npos) {
+                                          DetectedMember.kick("您的群名片表意不明，无法确认是否为无账号成员。");
+                                          std::string MemberID = std::to_string(MemberList.at(i));
+                                          std::string LeaveType = "(群名片表意不明移出)";
+                                          std::string ResponseTmp = iniQuery(iniPath, "LeaveRecord", MemberID);
+                                          if (ResponseTmp == "未找到") {
+                                              iniWrite(iniPath, "LeaveRecord", MemberID, CurrentTime + LeaveType);
+                                          } else {
+                                              iniWrite(iniPath, "LeaveRecord", MemberID,
+                                                       ResponseTmp + "," + CurrentTime + LeaveType);
+                                          }
+                                          std::string OutputResult =
+                                                  "检测到群名片表意不明，无法确认是否为无账号成员，正在清理。位置：" +
+                                                  std::to_string(i) + " ,成员号: " +
+                                                  std::to_string(DetectedMember.id()) +
+                                                  " ,群名片为: " + DetectedMember.nickOrNameCard();
+                                          CheckNickLog << OutputResult << std::endl;
+                                          CleanedUser++;
+                                          Sleep(3200);
+                                      }
+                                  } else {
+                                      GroupMessage.group.sendMessage(
+                                              "已取消群成员清理。操作数: " + std::to_string(CleanedUser));
+                                      CheckNickLog << "\n已取消群成员清理。已操作 " + std::to_string(CleanedUser) +
+                                                      "个不合规群成员，操作结束于执行位置 " + std::to_string(i)
+                                                   << std::endl;
+                                      isCleanCancelled = 0;
+                                      break;
+                                  }
                               }
                           }
-                          else
-                          {
-                              GroupMessage.group.sendMessage("已取消群成员清理。操作数: " + std::to_string(CleanedUser));
-                              CheckNickLog << "\n已取消群成员清理。已操作 " + std::to_string(CleanedUser) + "个不合规群成员，操作结束于执行位置 " + std::to_string(i) << std::endl;
-                              isCleanCancelled = 0;
-                              break;
+                          catch (BotException &err) {//踢出时捕获异常，以免崩端
+                              Logger::logger.error(err.what());
+                          }
+                          catch (MemberException &err) {
+                              if (err.type == 1) {
+                                  Logger::logger.error("[Error]执行时未找到目标群。");
+                              }
+                              if (err.type == 2) {
+                                  std::string ErrorStr =
+                                          "[Error]执行踢出成员 " + std::to_string(DetectedMember.id()) +
+                                          " (执行位置: " + std::to_string(i) +
+                                          ")时未找到目标群成员。(可能已经提前退群?)";
+                                  Logger::logger.error(ErrorStr);
+                                  GroupMessage.group.sendMessage(ErrorStr);
+                                  CheckNickLog << ErrorStr << std::endl;
+                              }
                           }
                       }
+                      {
+                          GroupMessage.group.sendMessage("已检测到任务取消。");
+                          CheckNickLog << "任务在开始执行前就被取消。" << std::endl;
+                          isCleanCancelled = 0;
+                      }
+                      CheckNickLog << "\n不合规群名片成员清理任务已完成。清理了 " + std::to_string(CleanedUser) + "位群成员。"
+                                   << std::endl;
+                      CheckNickLog << "此文件由包子铺群机器人系统自动生成。" << std::endl;
+                      CheckNickLog.close();
+                      RemoteFile tmp = GroupMessage.group.sendFile("/CleanNickLog-" + CurrentTime + ".txt",
+                                                                   "C:\\Users\\Server\\Desktop\\CleanNickLog.txt");
+                      Logger::logger.info("[Operation]文件发送操作：发送群名片清理日志");
+                      Sleep(1000);
+                      GroupMessage.group.sendMessage(
+                              "清理完毕，清理了 " + std::to_string(CleanedUser) + " 位群成员。\n结果已发送至上方群文件。");
                   }
-                  else
-                  {
-                      GroupMessage.group.sendMessage("已检测到任务取消。");
-                      CheckNickLog << "任务在开始执行前就被取消。" << std::endl;
-                      isCleanCancelled = 0;
-                  }
-                  CheckNickLog << "\n不合规群名片成员清理任务已完成。清理了 " + std::to_string(CleanedUser) + "位群成员。"<< std::endl;
-                  CheckNickLog << "此文件由包子铺群机器人系统自动生成。" << std::endl;
-                  CheckNickLog.close();
-                  RemoteFile tmp = GroupMessage.group.sendFile("/CleanNickLog-"+CurrentTime+".txt","C:\\Users\\Server\\Desktop\\CleanNickLog.txt");
-                  Logger::logger.info("[Operation]文件发送操作：发送群名片清理日志");
-                  Sleep(1000);
-                  GroupMessage.group.sendMessage("清理完毕，清理了 "+ std::to_string(CleanedUser)+" 位群成员。\n结果已发送至上方群文件。");
               }
               if(GroupMessage.message.toMiraiCode().substr(0,15) == ".testMiraiCode "  && iniQuery(iniPath,"Admins",std::to_string(GroupMessage.sender.id())) == "True")
               {
@@ -431,6 +518,12 @@ public:
               if(GroupMessage.message.toMiraiCode().substr(0,9) == ".resolve " && iniQuery(iniPath,"Admins",std::to_string(GroupMessage.sender.id())) == "True")
               {
                   GroupMessage.group.sendMessage(MiraiCP::MiraiCode(GroupMessage.message.toMiraiCode().erase(0,9)));
+              }
+              if(GroupMessage.message.toMiraiCode().substr(0,6) == ".kick " && iniQuery(iniPath,"Admins",std::to_string(GroupMessage.sender.id())) == "True")
+              {
+                  Member KickTarget(atoll(GroupMessage.message.toMiraiCode().erase(0,6).c_str()), Baozipu.id() , GroupMessage.bot.id);
+                  KickTarget.kick("您已被一位管理员移出群聊。");
+                  GroupMessage.group.sendMessage("已对 " + GroupMessage.message.toMiraiCode().erase(0,6) + " 执行了移除。");
               }
           }
           
