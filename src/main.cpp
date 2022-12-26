@@ -401,7 +401,7 @@ public:
                                           CleanedUser++;
                                           Sleep(3200);
                                       }
-                                  } else {
+                                  } else if(isCleanCancelled == 1){
                                       GroupMessage.group.sendMessage(
                                               "已取消群成员清理。操作数: " + std::to_string(CleanedUser));
                                       CheckNickLog << "\n已取消群成员清理。已操作 " + std::to_string(CleanedUser) +
@@ -410,6 +410,12 @@ public:
                                       isCleanCancelled = 0;
                                       break;
                                   }
+                              }
+                              else
+                              {
+                                  GroupMessage.group.sendMessage("已检测到任务取消。");
+                                  CheckNickLog << "任务在开始执行前就被取消。" << std::endl;
+                                  isCleanCancelled = 0;
                               }
                           }
                           catch (BotException &err) {//踢出时捕获异常，以免崩端
@@ -429,11 +435,6 @@ public:
                                   CheckNickLog << ErrorStr << std::endl;
                               }
                           }
-                      }
-                      {
-                          GroupMessage.group.sendMessage("已检测到任务取消。");
-                          CheckNickLog << "任务在开始执行前就被取消。" << std::endl;
-                          isCleanCancelled = 0;
                       }
                       CheckNickLog << "\n不合规群名片成员清理任务已完成。清理了 " + std::to_string(CleanedUser) + "位群成员。"
                                    << std::endl;
