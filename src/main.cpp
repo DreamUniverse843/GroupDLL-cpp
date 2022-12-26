@@ -101,7 +101,7 @@ std::string getSubStr(std::string str)
         if(str.find(iniQuery(iniPath,"BannedSubStr",std::to_string(i))) != std::string::npos)
         {
             Logger::logger.info("检测到包含子串 " + std::to_string(i));
-            return iniQuery(iniPath,"BannenSubStr",std::to_string(i));
+            return iniQuery(iniPath,"BannedSubStr",std::to_string(i));
         }
     }
     return "none";
@@ -180,6 +180,12 @@ public:
                       GroupMessage.message.source->recall();
                       Logger::logger.info("[System]检测到 " + GroupMessage.message.toMiraiCode() + " 中包含需屏蔽的子串 \" 6\",正在撤回");
                       Notify.sendMessage("RecallLogger:\n撤回类型:子串匹配\n触发用户:" + std::to_string(GroupMessage.sender.id()) + "\n发送内容:" + GroupMessage.message.toMiraiCode() + "\n匹配子串:\" 6\"");
+                  }
+                  if(GroupMessage.message.toMiraiCode().find("6 ") != std::string::npos)
+                  {
+                      GroupMessage.message.source->recall();
+                      Logger::logger.info("[System]检测到 " + GroupMessage.message.toMiraiCode() + " 中包含需屏蔽的子串 \"6 \",正在撤回");
+                      Notify.sendMessage("RecallLogger:\n撤回类型:子串匹配\n触发用户:" + std::to_string(GroupMessage.sender.id()) + "\n发送内容:" + GroupMessage.message.toMiraiCode() + "\n匹配子串:\"6 \"");
                   }
               }
               if(GroupMessage.message.toMiraiCode() == ".dismisskick" && iniQuery(iniPath,"Admins",std::to_string(GroupMessage.sender.id())) == "True") //.dismisskick 调用的命令
