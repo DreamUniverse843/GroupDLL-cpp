@@ -1,13 +1,15 @@
+#define _CRT_SECURE_NO_WARNINGS 1  //无视 MSVC 的不安全函数提示
 // MiraiCP依赖文件(只需要引入这一个)
-#define _CRT_SECURE_NO_WARNINGS 1 //无视 MSVC 的不安全函数提示
 #include <MiraiCP.hpp>
 #include <fstream>
 #include "windows.h"
 #include "time.h"
-#include "simpleINI.h"
-using namespace MiraiCP;
+#include "SimpleIni.h"
 
-const PluginConfig CPPPlugin::config{
+using namespace MiraiCP;
+using namespace std;
+
+const PluginConfig CPPPlugin::config {
         "cn.xiaobaomc.group",          // 插件id
         "Xiaobao-QQGroup-Plugin",        // 插件名称
         "1.0.0",            // 插件版本
@@ -29,6 +31,7 @@ int memberRepeatedCount = 0;
 CSimpleIniA RobotINI;//ini 文件操作对象
 //常量，配置文件的绝对路径(相对路径会出问题)
 const std::string iniPath = "C:\\Users\\Server\\Desktop\\Mirai.ini";
+const std::string codefilePath = "C:\\MCSManager_v9.6.0_win_x64\\daemon\\data\\InstanceData\\bfcdb53587f7455d88c1801691ccd56a\\PersonCode.ini";
 
 void iniInitialize(std::string FilePath) //初始化配置文件存储
 {
@@ -75,7 +78,7 @@ void iniWrite(std::string FilePath,std::string Section,std::string Name,std::str
     }
 }
 
-boolean isSubStrExist(std::string str)
+bool isSubStrExist(std::string str)
 {
     //Logger::logger.info("子串校验，传入为 " + str);
     int SubStrCount = atoi(iniQuery(iniPath,"BannedSubStr","SubStrCount").c_str());
@@ -106,16 +109,17 @@ std::string getSubStr(std::string str)
     }
     return "none";
 }
+
 // 插件实例
-class Main : public CPPPlugin {
+class PluginMain : public CPPPlugin {
 public:
   // 配置插件信息
-  Main() : CPPPlugin() {}
-  ~Main() override = default;
+  PluginMain() : CPPPlugin() {}
+  ~PluginMain() override = default; // override关键字是为了防止内存泄漏
 
-  // 入口函数
+  // 入口函数。插件初始化时会被调用一次，请在此处注册监听
   void onEnable() override {
-    // 请在此处监听
+    /*插件启动时执行一次*/
       Logger::logger.info("[Info]插件正在启动。如群内无法接收到机器人消息，则可能处于风控状态。");
       Logger::logger.info("[System]初始化数据文件中");
       iniInitialize(iniPath); //初始化数据
@@ -126,8 +130,8 @@ public:
       }
       iniWrite(iniPath,"Initialize","isShutdownNormally","0");
       Event::registerEvent<BotOnlineEvent>([](BotOnlineEvent OnlineEvent) {
-          Group Notify(181327275,OnlineEvent.bot.id);
-          Group Lianhehui(1070074632,OnlineEvent.bot.id);
+          Group Notify(181327275,OnlineEvent.bot.id());
+          Group Lianhehui(1070074632,OnlineEvent.bot.id());
           if(isAbnormalStopChecked == 1)
           {
               Notify.sendMessage("机器人已从异常错误中恢复。(可能是直接关闭终端或发生了 JVM 崩溃)\n检测到上一次发生了异常退出，请查询后台日志了解详情。");
@@ -137,10 +141,10 @@ public:
           }
       });
       Event::registerEvent<GroupMessageEvent>([](GroupMessageEvent GroupMessage) { //群内消息的事件注册
-          Group ReceivedGroup(GroupMessage.group.id(), GroupMessage.bot.id); // 实例化接收到的群对象
-          Group Baozipu(604890935,GroupMessage.bot.id);
-          Group Notify(181327275,GroupMessage.bot.id);
-          Group Lianhehui(1070074632,GroupMessage.bot.id);
+          Group ReceivedGroup(GroupMessage.group.id(), GroupMessage.bot.id()); // 实例化接收到的群对象
+          Group Baozipu(604890935,GroupMessage.bot.id());
+          Group Notify(181327275,GroupMessage.bot.id());
+          Group Lianhehui(1070074632,GroupMessage.bot.id());
           if(GroupMessage.group.id() == 604890935) // 群消息来源：包子铺，只有管理员操作才能触发命令
           {
               /* 预留反复读功能
@@ -173,7 +177,7 @@ public:
                       GroupMessage.message.source->recall();
                       Logger::logger.info("[System]检测到 " + GroupMessage.message.toMiraiCode() + " 中包含需屏蔽的子串,正在撤回");
                       Notify.sendMessage("RecallLogger:\n撤回类型:子串匹配\n触发用户:" + std::to_string(GroupMessage.sender.id()) + "\n发送内容:" + GroupMessage.message.toMiraiCode() + "\n匹配子串:" +
-                                                 getSubStr(GroupMessage.message.toMiraiCode()));
+                                         getSubStr(GroupMessage.message.toMiraiCode()));
                   }
                   if(GroupMessage.message.toMiraiCode().find(" 6") != std::string::npos)
                   {
@@ -218,7 +222,7 @@ public:
               {
                   long long int TargetMember = atoll(GroupMessage.message.toMiraiCode().erase(0,12).c_str());
                   GroupMessage.group.sendMessage("抽夹子啦！\n正在为 " + std::to_string(TargetMember) + " 抽取夹子");
-                  Member MuteTarget(TargetMember,GroupMessage.group.id(),GroupMessage.bot.id);
+                  Member MuteTarget(TargetMember,GroupMessage.group.id(),GroupMessage.bot.id());
                   int a=1800,b=1296000;
                   int BanTime = (rand() % (b-a+1))+ a;
                   Sleep(3600);
@@ -255,12 +259,12 @@ public:
                   Logger::logger.info("[System]群成员清单拉取完毕，长度 " + std::to_string(MemberList.size()));
                   for(int i=0;i<=MemberList.size()-1;i++) //数组长度必须减 1，否则会越界
                   {
-                      MiraiCP::Member DetectedMember(MemberList.at(i),Baozipu.id(),GroupMessage.bot.id); //对检测目标构建对象
+                      MiraiCP::Member DetectedMember(MemberList.at(i),Baozipu.id(),GroupMessage.bot.id()); //对检测目标构建对象
                       if(DetectedMember.nickOrNameCard().find("游戏ID:") == std::string::npos
-                            && DetectedMember.nickOrNameCard().find("游戏ID：") == std::string::npos
-                            && DetectedMember.nickOrNameCard().find("[无账号]") == std::string::npos
-                            && DetectedMember.nickOrNameCard().find("游戏id：") == std::string::npos
-                            && DetectedMember.nickOrNameCard().find("游戏id:") == std::string::npos)
+                         && DetectedMember.nickOrNameCard().find("游戏ID：") == std::string::npos
+                         && DetectedMember.nickOrNameCard().find("[无账号]") == std::string::npos
+                         && DetectedMember.nickOrNameCard().find("游戏id：") == std::string::npos
+                         && DetectedMember.nickOrNameCard().find("游戏id:") == std::string::npos)
                       {
                           std::string OutputResult = "检测到不合规的群名片。位置：" + std::to_string(i) + " ,成员号: " + std::to_string(DetectedMember.id()) + " ,群名片为: " + DetectedMember.nickOrNameCard();
                           CheckNickLog << OutputResult << std::endl;
@@ -330,7 +334,7 @@ public:
                       Sleep(1500);
                       for (int i = 0; i <= MemberList.size() - 1; i++) {
                           MiraiCP::Member DetectedMember(MemberList.at(i), Baozipu.id(),
-                                                         GroupMessage.bot.id); //对检测目标构建对象
+                                                         GroupMessage.bot.id()); //对检测目标构建对象
                           try {
                               if (isCleanCancelled == 0) {
                                   if (DetectedMember.nickOrNameCard().find("游戏ID:") == std::string::npos
@@ -528,17 +532,43 @@ public:
               }
               if(GroupMessage.message.toMiraiCode().substr(0,6) == ".kick " && iniQuery(iniPath,"Admins",std::to_string(GroupMessage.sender.id())) == "True")
               {
-                  Member KickTarget(atoll(GroupMessage.message.toMiraiCode().erase(0,6).c_str()), Baozipu.id() , GroupMessage.bot.id);
+                  Member KickTarget(atoll(GroupMessage.message.toMiraiCode().erase(0,6).c_str()), Baozipu.id() , GroupMessage.bot.id());
                   KickTarget.kick("您已被一位管理员移出群聊。");
                   GroupMessage.group.sendMessage("已对 " + GroupMessage.message.toMiraiCode().erase(0,6) + " 执行了移除。");
               }
+              if(GroupMessage.message.toMiraiCode() == ".genCode")
+              {
+                  int flag,i;
+                  char ch[11]={NULL};//注意要多分配一个字节来保存字符串最后的结束符
+                  srand((unsigned)time(NULL));
+
+                  for(i=0;i<10;i++)
+                  {
+                      flag=rand()%2;
+                      if(flag) ch[i]='A'+rand()%26;
+                      else ch[i]='a'+rand()%26;
+                  }
+                  ch[i]='\0';
+                  std::string ConfirmCode = ch;
+                  if(iniQuery(codefilePath,"ConfirmCode",std::to_string(GroupMessage.sender.id())) == "未找到")
+                  {
+                      iniWrite(codefilePath,"ConfirmCode",std::to_string(GroupMessage.sender.id()), ConfirmCode);
+                      Sleep(600);
+                      GroupMessage.chat()->sendMessage("您的确认码:" + ConfirmCode + "\n请使用复制粘贴以免提交错误!");
+                  }
+                  else
+                  {
+                      Sleep(600);
+                      GroupMessage.chat()->sendMessage("您已经生成过确认码:" + iniQuery(codefilePath,"ConfirmCode",std::to_string(GroupMessage.sender.id())));
+                  }
+              }
           }
-          
+
       });
       Event::registerEvent<MemberJoinRequestEvent>([](MemberJoinRequestEvent JoinRequestEvent){ //成员申请入群的事件注册
-          Group Baozipu(604890935,JoinRequestEvent.bot.id);
-          Group Notify(181327275,JoinRequestEvent.bot.id);
-          Group Lianhehui(1070074632,JoinRequestEvent.bot.id);
+          Group Baozipu(604890935,JoinRequestEvent.bot.id());
+          Group Notify(181327275,JoinRequestEvent.bot.id());
+          Group Lianhehui(1070074632,JoinRequestEvent.bot.id());
           if(JoinRequestEvent.group == Baozipu)
           {
               //入群申请监听。目前无可靠方法获取入群玩家的附言，暂时不设置转发。
@@ -563,9 +593,9 @@ public:
           }
       });
       Event::registerEvent<MemberLeaveEvent>([](MemberLeaveEvent LeaveEvent){ //群成员离开事件监听
-          Group Baozipu(604890935,LeaveEvent.bot.id);
-          Group Notify(181327275,LeaveEvent.bot.id);
-          Group Lianhehui(1070074632,LeaveEvent.bot.id);
+          Group Baozipu(604890935,LeaveEvent.bot.id());
+          Group Notify(181327275,LeaveEvent.bot.id());
+          Group Lianhehui(1070074632,LeaveEvent.bot.id());
           auto now = std::chrono::system_clock::now();
           //通过不同精度获取相差的毫秒数
           time_t tt = std::chrono::system_clock::to_time_t(now);
@@ -612,18 +642,53 @@ public:
           }
 
       });
+      Event::registerEvent<PrivateMessageEvent>([](PrivateMessageEvent PrivateMessage){
+          if(PrivateMessage.message.toMiraiCode()==".genCode")
+          {
+              int flag,i;
+              char ch[11]={NULL};//注意要多分配一个字节来保存字符串最后的结束符
+              srand((unsigned)time(NULL));
 
+              for(i=0;i<10;i++)
+              {
+                  flag=rand()%2;
+                  if(flag) ch[i]='A'+rand()%26;
+                  else ch[i]='a'+rand()%26;
+              }
+              ch[i]='\0';
+              std::string ConfirmCode = ch;
+              if(iniQuery(codefilePath,"ConfirmCode",std::to_string(PrivateMessage.sender.id())) == "未找到")
+              {
+                  iniWrite(codefilePath,"ConfirmCode",std::to_string(PrivateMessage.sender.id()), ConfirmCode);
+                  Sleep(600);
+                  PrivateMessage.chat()->sendMessage("您的确认码:" + ConfirmCode + "\n请使用复制粘贴以免提交错误!");
+              }
+              else
+              {
+                  Sleep(600);
+                  PrivateMessage.chat()->sendMessage("您已经生成过确认码:" + iniQuery(codefilePath,"ConfirmCode",std::to_string(PrivateMessage.sender.id())));
+              }
+          }
+          if(PrivateMessage.message.toMiraiCode().substr(0,11) ==".queryCode " && iniQuery(iniPath,"Admins",std::to_string(PrivateMessage.sender.id())) == "True")
+          {
+              std::string Target = PrivateMessage.message.toMiraiCode().erase(0,11);
+              Sleep(600);
+              PrivateMessage.chat()->sendMessage("对 " + Target + " 的确认码查询:" + iniQuery(codefilePath,"ConfirmCode",Target));
+
+          }
+      });
   }
 
-  // 退出函数
+  // 退出函数。请在这里结束掉所有子线程，否则可能会导致程序崩溃
   void onDisable() override {
     /*插件结束前执行*/
-    Logger::logger.info("[Info]插件正在关闭。");
+      Logger::logger.info("[Info]插件正在关闭。");
       iniWrite(iniPath,"Initialize","isShutdownNormally","1");
   }
 };
 
-// 绑定当前插件实例
+// 创建当前插件实例。请不要进行其他操作，
+// 初始化请在onEnable中进行
 void MiraiCP::enrollPlugin() {
-  MiraiCP::enrollPlugin(new Main);
+  MiraiCP::enrollPlugin<PluginMain>();
 }
