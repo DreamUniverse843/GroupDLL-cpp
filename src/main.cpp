@@ -536,32 +536,6 @@ public:
                   KickTarget.kick("您已被一位管理员移出群聊。");
                   GroupMessage.group.sendMessage("已对 " + GroupMessage.message.toMiraiCode().erase(0,6) + " 执行了移除。");
               }
-              if(GroupMessage.message.toMiraiCode() == ".genCode")
-              {
-                  int flag,i;
-                  char ch[11]={NULL};//注意要多分配一个字节来保存字符串最后的结束符
-                  srand((unsigned)time(NULL));
-
-                  for(i=0;i<10;i++)
-                  {
-                      flag=rand()%2;
-                      if(flag) ch[i]='A'+rand()%26;
-                      else ch[i]='a'+rand()%26;
-                  }
-                  ch[i]='\0';
-                  std::string ConfirmCode = ch;
-                  if(iniQuery(codefilePath,"ConfirmCode",std::to_string(GroupMessage.sender.id())) == "未找到")
-                  {
-                      iniWrite(codefilePath,"ConfirmCode",std::to_string(GroupMessage.sender.id()), ConfirmCode);
-                      Sleep(600);
-                      GroupMessage.chat()->sendMessage("您的确认码:" + ConfirmCode + "\n请使用复制粘贴以免提交错误!");
-                  }
-                  else
-                  {
-                      Sleep(600);
-                      GroupMessage.chat()->sendMessage("您已经生成过确认码:" + iniQuery(codefilePath,"ConfirmCode",std::to_string(GroupMessage.sender.id())));
-                  }
-              }
           }
 
       });
@@ -643,6 +617,7 @@ public:
 
       });
       Event::registerEvent<PrivateMessageEvent>([](PrivateMessageEvent PrivateMessage){
+          /*
           if(PrivateMessage.message.toMiraiCode()==".genCode")
           {
               int flag,i;
@@ -669,6 +644,7 @@ public:
                   PrivateMessage.chat()->sendMessage("您已经生成过确认码:" + iniQuery(codefilePath,"ConfirmCode",std::to_string(PrivateMessage.sender.id())));
               }
           }
+           */
           if(PrivateMessage.message.toMiraiCode().substr(0,11) ==".queryCode " && iniQuery(iniPath,"Admins",std::to_string(PrivateMessage.sender.id())) == "True")
           {
               std::string Target = PrivateMessage.message.toMiraiCode().erase(0,11);
