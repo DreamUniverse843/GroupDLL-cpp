@@ -165,6 +165,16 @@ public:
                   GroupMessage.message.source->recall();
                   Logger::logger.info("[System]检测到黑名单词汇 " + GroupMessage.message.toMiraiCode() + " ,正在撤回");
                   Notify.sendMessage("RecallLogger:\n撤回类型:黑名单全字匹配\n触发用户:" + std::to_string(GroupMessage.sender.id()) + "\n发送内容:" + GroupMessage.message.toMiraiCode());
+                  std::string QueryTimeStr = iniQuery(iniPath,"RecallCount",std::to_string(GroupMessage.sender.id()));
+                  if(QueryTimeStr == "未找到")
+                  {
+                      iniWrite(iniPath,"RecallCount",std::to_string(GroupMessage.sender.id()),"1");
+                  }
+                  else
+                  {
+                      QueryTimeStr = std::to_string(atoi(QueryTimeStr.c_str())+ 1);
+                      iniWrite(iniPath,"RecallCount",std::to_string(GroupMessage.sender.id()),QueryTimeStr);
+                  }
               }
               else
               {
@@ -174,18 +184,48 @@ public:
                       Logger::logger.info("[System]检测到 " + GroupMessage.message.toMiraiCode() + " 中包含需屏蔽的子串,正在撤回");
                       Notify.sendMessage("RecallLogger:\n撤回类型:子串匹配\n触发用户:" + std::to_string(GroupMessage.sender.id()) + "\n发送内容:" + GroupMessage.message.toMiraiCode() + "\n匹配子串:" +
                                                  getSubStr(GroupMessage.message.toMiraiCode()));
+                      std::string QueryTimeStr = iniQuery(iniPath,"RecallCount",std::to_string(GroupMessage.sender.id()));
+                      if(QueryTimeStr == "未找到")
+                      {
+                          iniWrite(iniPath,"RecallCount",std::to_string(GroupMessage.sender.id()),"1");
+                      }
+                      else
+                      {
+                          QueryTimeStr = std::to_string(atoi(QueryTimeStr.c_str())+ 1);
+                          iniWrite(iniPath,"RecallCount",std::to_string(GroupMessage.sender.id()),QueryTimeStr);
+                      }
                   }
                   if(GroupMessage.message.toMiraiCode().find(" 6") != std::string::npos)
                   {
                       GroupMessage.message.source->recall();
                       Logger::logger.info("[System]检测到 " + GroupMessage.message.toMiraiCode() + " 中包含需屏蔽的子串 \" 6\",正在撤回");
                       Notify.sendMessage("RecallLogger:\n撤回类型:子串匹配\n触发用户:" + std::to_string(GroupMessage.sender.id()) + "\n发送内容:" + GroupMessage.message.toMiraiCode() + "\n匹配子串:\" 6\"");
+                      std::string QueryTimeStr = iniQuery(iniPath,"RecallCount",std::to_string(GroupMessage.sender.id()));
+                      if(QueryTimeStr == "未找到")
+                      {
+                          iniWrite(iniPath,"RecallCount",std::to_string(GroupMessage.sender.id()),"1");
+                      }
+                      else
+                      {
+                          QueryTimeStr = std::to_string(atoi(QueryTimeStr.c_str())+ 1);
+                          iniWrite(iniPath,"RecallCount",std::to_string(GroupMessage.sender.id()),QueryTimeStr);
+                      }
                   }
                   if(GroupMessage.message.toMiraiCode().find("6 ") != std::string::npos)
                   {
                       GroupMessage.message.source->recall();
                       Logger::logger.info("[System]检测到 " + GroupMessage.message.toMiraiCode() + " 中包含需屏蔽的子串 \"6 \",正在撤回");
                       Notify.sendMessage("RecallLogger:\n撤回类型:子串匹配\n触发用户:" + std::to_string(GroupMessage.sender.id()) + "\n发送内容:" + GroupMessage.message.toMiraiCode() + "\n匹配子串:\"6 \"");
+                      std::string QueryTimeStr = iniQuery(iniPath,"RecallCount",std::to_string(GroupMessage.sender.id()));
+                      if(QueryTimeStr == "未找到")
+                      {
+                          iniWrite(iniPath,"RecallCount",std::to_string(GroupMessage.sender.id()),"1");
+                      }
+                      else
+                      {
+                          QueryTimeStr = std::to_string(atoi(QueryTimeStr.c_str())+ 1);
+                          iniWrite(iniPath,"RecallCount",std::to_string(GroupMessage.sender.id()),QueryTimeStr);
+                      }
                   }
               }
               if(GroupMessage.message.toMiraiCode() == ".dismisskick" && iniQuery(iniPath,"Admins",std::to_string(GroupMessage.sender.id())) == "True") //.dismisskick 调用的命令
@@ -225,8 +265,18 @@ public:
                   GroupMessage.group.sendMessage("送给 " + std::to_string(TargetMember) + " 一个时长为 " + std::to_string(BanTime) + " 的夹子！");
                   MuteTarget.mute(BanTime);
               }
+              if(iniQuery(iniPath,"RecallCount",std::to_string(GroupMessage.sender.id())) != "未找到" && atoi(iniQuery(iniPath,"RecallCount",std::to_string(GroupMessage.sender.id())).c_str()) % 10 == 0)
+              {
+                  GroupMessage.sender.mute(3600);
+                  GroupMessage.group.sendMessage("请勿反复触发敏感词");
+              }
           }
           if(GroupMessage.group.id() == 1070074632 || GroupMessage.group.id() == 181327275 || GroupMessage.group.id() == 604890935){
+              if(GroupMessage.message.toMiraiCode().substr(0,13) == ".queryRecall " && iniQuery(iniPath,"Admins",std::to_string(GroupMessage.sender.id())) == "True")
+              {
+                  std::string targetQueryUser = GroupMessage.message.toMiraiCode().erase(0,13);
+                  GroupMessage.group.sendMessage("对 " + targetQueryUser + " 的撤回次数查询: " + iniQuery(iniPath, "RecallCount",targetQueryUser));
+              }
               if(GroupMessage.message.toMiraiCode() == ".cpptest")
               {
                   GroupMessage.group.sendMessage("测试成功。\n此消息由基于 C++ 的 MiraiCP 插件发出。");
