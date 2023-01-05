@@ -143,83 +143,6 @@ public:
           Group Lianhehui(1070074632,GroupMessage.bot.id);
           if(GroupMessage.group.id() == 604890935) // 群消息来源：包子铺，只有管理员操作才能触发命令
           {
-              /* 预留反复读功能
-              if(GroupMessage.sender.id() == memberRepeated)
-              {
-                  memberRepeatedCount++;
-                  if(memberRepeatedCount > 3)
-                  {
-                      GroupMessage.message.source->recall();
-                      GroupMessage.sender.mute(1800);
-                      GroupMessage.group.sendMessage("请勿刷屏");
-                  }
-              }
-              else
-              {
-                  memberRepeated = GroupMessage.sender.id();
-                  memberRepeatedCount = 0;
-              }
-               */
-              if(iniQuery(iniPath,"BannedWords",GroupMessage.message.toMiraiCode()) == "1")
-              {
-                  Notify.sendMessage("RecallLogger:\n检测类型:黑名单全字匹配\n触发用户:" + std::to_string(GroupMessage.sender.id()) + "\n发送内容:" + GroupMessage.message.toMiraiCode());
-                  std::string QueryTimeStr = iniQuery(iniPath,"RecallCount",std::to_string(GroupMessage.sender.id()));
-                  if(QueryTimeStr == "未找到")
-                  {
-                      iniWrite(iniPath,"RecallCount",std::to_string(GroupMessage.sender.id()),"1");
-                  }
-                  else
-                  {
-                      QueryTimeStr = std::to_string(atoi(QueryTimeStr.c_str())+ 1);
-                      iniWrite(iniPath,"RecallCount",std::to_string(GroupMessage.sender.id()),QueryTimeStr);
-                  }
-              }
-              else
-              {
-                  if(isSubStrExist(GroupMessage.message.toMiraiCode()) && GroupMessage.message.toMiraiCode().find("[mirai:image:{") == std::string::npos)
-                  {
-                      Notify.sendMessage("RecallLogger:\n检测类型:子串匹配\n触发用户:" + std::to_string(GroupMessage.sender.id()) + "\n发送内容:" + GroupMessage.message.toMiraiCode() + "\n匹配子串:" +
-                                                 getSubStr(GroupMessage.message.toMiraiCode()));
-                      std::string QueryTimeStr = iniQuery(iniPath,"RecallCount",std::to_string(GroupMessage.sender.id()));
-                      if(QueryTimeStr == "未找到")
-                      {
-                          iniWrite(iniPath,"RecallCount",std::to_string(GroupMessage.sender.id()),"1");
-                      }
-                      else
-                      {
-                          QueryTimeStr = std::to_string(atoi(QueryTimeStr.c_str())+ 1);
-                          iniWrite(iniPath,"RecallCount",std::to_string(GroupMessage.sender.id()),QueryTimeStr);
-                      }
-                  }
-                  if(GroupMessage.message.toMiraiCode().find(" 6") != std::string::npos)
-                  {
-                      Notify.sendMessage("RecallLogger:\n检测类型:子串匹配\n触发用户:" + std::to_string(GroupMessage.sender.id()) + "\n发送内容:" + GroupMessage.message.toMiraiCode() + "\n匹配子串:\" 6\"");
-                      std::string QueryTimeStr = iniQuery(iniPath,"RecallCount",std::to_string(GroupMessage.sender.id()));
-                      if(QueryTimeStr == "未找到")
-                      {
-                          iniWrite(iniPath,"RecallCount",std::to_string(GroupMessage.sender.id()),"1");
-                      }
-                      else
-                      {
-                          QueryTimeStr = std::to_string(atoi(QueryTimeStr.c_str())+ 1);
-                          iniWrite(iniPath,"RecallCount",std::to_string(GroupMessage.sender.id()),QueryTimeStr);
-                      }
-                  }
-                  if(GroupMessage.message.toMiraiCode().find("6 ") != std::string::npos)
-                  {
-                      Notify.sendMessage("RecallLogger:\n检测类型:子串匹配\n触发用户:" + std::to_string(GroupMessage.sender.id()) + "\n发送内容:" + GroupMessage.message.toMiraiCode() + "\n匹配子串:\"6 \"");
-                      std::string QueryTimeStr = iniQuery(iniPath,"RecallCount",std::to_string(GroupMessage.sender.id()));
-                      if(QueryTimeStr == "未找到")
-                      {
-                          iniWrite(iniPath,"RecallCount",std::to_string(GroupMessage.sender.id()),"1");
-                      }
-                      else
-                      {
-                          QueryTimeStr = std::to_string(atoi(QueryTimeStr.c_str())+ 1);
-                          iniWrite(iniPath,"RecallCount",std::to_string(GroupMessage.sender.id()),QueryTimeStr);
-                      }
-                  }
-              }
               if(GroupMessage.message.toMiraiCode() == ".dismisskick" && iniQuery(iniPath,"Admins",std::to_string(GroupMessage.sender.id())) == "True") //.dismisskick 调用的命令
               {
                   if(isKickIgnoreEnable == 0)
@@ -259,11 +182,6 @@ public:
               }
           }
           if(GroupMessage.group.id() == 1070074632 || GroupMessage.group.id() == 181327275 || GroupMessage.group.id() == 604890935){
-              if(GroupMessage.message.toMiraiCode().substr(0,13) == ".queryRecall " && iniQuery(iniPath,"Admins",std::to_string(GroupMessage.sender.id())) == "True")
-              {
-                  std::string targetQueryUser = GroupMessage.message.toMiraiCode().erase(0,13);
-                  GroupMessage.group.sendMessage("对 " + targetQueryUser + " 的撤回次数查询: " + iniQuery(iniPath, "RecallCount",targetQueryUser));
-              }
               if(GroupMessage.message.toMiraiCode() == ".cpptest")
               {
                   GroupMessage.group.sendMessage("测试成功。\n此消息由基于 C++ 的 MiraiCP 插件发出。");
@@ -544,20 +462,6 @@ public:
                   RemoteFile tmp = GroupMessage.group.sendFile("/GetRemote.rename",TargetFilePath);
                   Sleep(250);
                   GroupMessage.group.sendMessage("远程文件发送成功，请自行将文件重命名。");
-              }
-              if(GroupMessage.message.toMiraiCode().substr(0,11) == ".addbanstr " && iniQuery(iniPath,"Admins",std::to_string(GroupMessage.sender.id())) == "True")
-              {
-                  int CurrentSubStrAmount = atoi(iniQuery(iniPath,"BannedSubStr","SubStrCount").c_str());
-                  CurrentSubStrAmount++;
-                  std::string BannedSubStr = GroupMessage.message.toMiraiCode().erase(0,11);
-                  iniWrite(iniPath,"BannedSubStr",std::to_string(CurrentSubStrAmount),BannedSubStr);
-                  iniWrite(iniPath,"BannedSubStr","SubStrCount",std::to_string(CurrentSubStrAmount));
-                  GroupMessage.group.sendMessage("已添加第 " + std::to_string(CurrentSubStrAmount) + " 个屏蔽子串。");
-                  Logger::logger.info("已添加第 " + std::to_string(CurrentSubStrAmount) + " 个屏蔽子串: " + BannedSubStr);
-              }
-              if(GroupMessage.message.toMiraiCode() == ".banstrnum" && iniQuery(iniPath,"Admins",std::to_string(GroupMessage.sender.id())) == "True")
-              {
-                  GroupMessage.group.sendMessage("目前有 " + iniQuery(iniPath,"BannedSubStr","SubStrCount") + " 条屏蔽子串。");
               }
               if(GroupMessage.message.toMiraiCode().substr(0,9) == ".resolve " && iniQuery(iniPath,"Admins",std::to_string(GroupMessage.sender.id())) == "True")
               {
