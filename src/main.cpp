@@ -13,7 +13,7 @@ const PluginConfig CPPPlugin::config{
         "1.0.0",            // 插件版本
         "DreamUniverse843",        // 插件作者
         "Whatelse~",  // 可选：插件描述
-        "2022-10-18"        // 可选：日期
+        "2023-01-05"        // 可选：日期
 };
 
 //是否发生了非正常退出
@@ -28,7 +28,7 @@ int memberRepeatedCount = 0;
 
 CSimpleIniA RobotINI;//ini 文件操作对象
 //常量，配置文件的绝对路径(相对路径会出问题)
-const std::string iniPath = "C:\\Users\\Server\\Desktop\\Mirai.ini";
+const std::string iniPath = "C:\\MCSManager_v9.6.0_win_x64\\daemon\\data\\InstanceData\\bfcdb53587f7455d88c1801691ccd56a\\Mirai.ini";
 
 void iniInitialize(std::string FilePath) //初始化配置文件存储
 {
